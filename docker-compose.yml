@@ -1,0 +1,33 @@
+services:
+  api: &main_app
+    build:
+      context: .
+      target: dev
+      dockerfile: ./Dockerfile
+    image: tailored_test_task:${TAILORED_TEST_TASK_VERSION:-latest}
+    restart: always
+    ports:
+      # Exposes application port.
+    - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TAILORED_TEST_TASK_HOST: 0.0.0.0
+      TAILORED_TEST_TASK_RELOAD: "True"
+      TAILORED_TEST_TASK_DB_FILE: /db_data/db.sqlite3
+    volumes:
+      - .:/app/src/
+      - tailored_test_task-db-data:/db_data/
+
+  migrator:
+    <<: *main_app
+    restart: "no"
+    command: alembic upgrade head
+    depends_on: {}
+
+
+
+volumes:
+  tailored_test_task-db-data:
+    name: tailored_test_task-db-data
