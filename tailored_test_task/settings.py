@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import gettempdir
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from yarl import URL
 
 TEMP_DIR = Path(gettempdir())
 
@@ -38,22 +39,35 @@ class Settings(BaseSettings):
 
     log_level: LogLevel = LogLevel.INFO
     # Variables for the database
-    db_file: Path = TEMP_DIR / "db.sqlite3"
+    db_host: str = "localhost"
+    db_port: int = 5432
+    db_user: str = "tailored_test_task"
+    db_pass: str = "tailored_test_task"  # noqa: S105
+    db_base: str = "tailored_test_task"
     db_echo: bool = False
 
     @property
-    def db_url(self) -> str:
+    def db_url(self) -> URL:
         """
         Assemble database URL from settings.
 
         :return: database URL.
         """
-        return f"sqlite+aiosqlite:///{self.db_file}"
+        return URL.build(
+            scheme="postgresql+asyncpg",
+            host=self.db_host,
+            port=self.db_port,
+            user=self.db_user,
+            password=self.db_pass,
+            path=f"/{self.db_base}",
+        )
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_prefix="TAILORED_TEST_TASK_",
         env_file_encoding="utf-8",
+        dotenv_filtering="match_prefix",
+        extra="ignore",
     )
 
 

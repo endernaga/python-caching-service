@@ -15,7 +15,7 @@ dependencies = [
   "ujson >=5.11.0,<6",
   "SQLAlchemy[asyncio] >=2.0.44,<3",
   "alembic >=1.17.2,<2",
-  "aiosqlite >=0.21.0,<1",
+  "asyncpg >=0.30.0,<1",
   "httptools >=0.7.1,<1",
   "pymongo >=4.15.4,<5",
 ]
@@ -65,7 +65,7 @@ filterwarnings = [
 anyio_mode = "auto"
 env = [
     "TAILORED_TEST_TASK_ENVIRONMENT=pytest",
-    "TAILORED_TEST_TASK_DB_FILE=test_db.sqlite3",
+    "TAILORED_TEST_TASK_DB_BASE=tailored_test_task_test",
 ]
 
 [tool.ruff]
