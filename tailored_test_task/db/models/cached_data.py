@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import DateTime, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from tailored_test_task.db.base import Base
 
@@ -9,10 +10,19 @@ class CachedStringData(Base):
     """Model for caching string data."""
 
     __tablename__ = "cached_string_data"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    input_string = Column(String, nullable=False, index=True, unique=True)
-    output_string = Column(String, nullable=False, unique=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    input_string: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        index=True,
+        unique=True,
+    )
+    output_string: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.now,
+    )
 
     def __repr__(self) -> str:
         return (
@@ -27,10 +37,19 @@ class CachedListData(Base):
     """Model for caching list data."""
 
     __tablename__ = "cached_list_data"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    input_hash = Column(String, nullable=False, index=True, unique=True)
-    output_string = Column(String, nullable=False, unique=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    input_hash: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        index=True,
+        unique=True,
+    )
+    output_string: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.now,
+    )
 
     def __repr__(self) -> str:
         return (
