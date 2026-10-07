@@ -1,149 +1,197 @@
 # tailored_test_task
 
-This project was generated using fastapi_template.
+FastAPI service that transforms and caches string payloads in PostgreSQL. Built from [fastapi_template](https://github.com/s3rius/fastapi-template).
+
+Given two lists of strings, each value is passed through a transformer (uppercased). Results are interleaved and stored so repeated inputs reuse the cached output instead of calling the transformer again.
+
+## Features
+
+- **Caching API** — `POST /payload` and `GET /payload/{id}`
+- **PostgreSQL persistence** via SQLAlchemy (async) and Alembic migrations
+- **CLI client** (`cache-cli`) to create and fetch payloads against a running server
+
+### Example
+
+Request:
+
+```json
+{
+  "list_1": ["hello", "world"],
+  "list_2": ["foo", "bar"]
+}
+```
+
+Response:
+
+```json
+{
+  "id": 1,
+  "output": "HELLO, FOO, WORLD, BAR"
+}
+```
 
 ## UV
 
-This project uses uv. It's a modern dependency management
-tool.
-
-To run the project use this set of commands:
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 ```bash
 uv sync --locked
 uv run -m tailored_test_task
 ```
 
-This will start the server on the configured host.
+This starts the server on the configured host (default `127.0.0.1:8000`).
 
-You can find swagger documentation at `/api/docs`.
-
-You can read more about uv here: https://docs.astral.sh/ruff/
+Swagger docs are available at `/api/docs`.
 
 ## Docker
 
-You can start the project with docker using this command:
+Start the API and PostgreSQL with:
 
 ```bash
 docker compose up --build
 ```
 
-This command exposes the web application on port 8000, mounts current directory and enables autoreload.
+This exposes the app on port 8000, mounts the current directory, and enables autoreload.
 
-But you have to rebuild image every time you modify `uv.lock` or `pyproject.toml` with this command:
+Rebuild whenever you change `uv.lock` or `pyproject.toml`:
 
 ```bash
 docker compose build
 ```
 
-## Project structure
+## API
+
+| Method | Path            | Description                                      |
+|--------|-----------------|--------------------------------------------------|
+| `POST` | `/payload`      | Transform and cache two input lists              |
+| `GET`  | `/payload/{id}` | Return a previously cached payload by id         |
+| `GET`  | `/api/health`   | Health check                                     |
+| `POST` | `/api/echo`     | Echo endpoint (template sample)                  |
+
+OpenAPI / Swagger: `/api/docs`
+
+## CLI
+
+After `uv sync`, the `cache-cli` entry point talks to a running server.
 
 ```bash
-$ tree "tailored_test_task"
-tailored_test_task
-├── conftest.py  # Fixtures for all tests.
-├── db  # module contains db configurations
-│   ├── dao  # Data Access Objects. Contains different classes to interact with database.
-│   └── models  # Package contains different models for ORMs.
-├── __main__.py  # Startup script. Starts uvicorn.
-├── services  # Package for different external services such as rabbit or redis etc.
-├── settings.py  # Main configuration settings for project.
-├── static  # Static content.
-├── tests  # Tests for project.
-└── web  # Package contains web server. Handlers, startup config.
-    ├── api  # Package with all handlers.
-    │   └── router.py  # Main router.
-    ├── application.py  # FastAPI application configuration.
-    └── lifespan.py  # Contains actions to perform on startup and shutdown.
+# Inline JSON
+cache-cli --host http://localhost:8000 --json '{"list_1":["hello","world"],"list_2":["foo","bar"]}'
+
+# From a file (or "-" for stdin)
+cache-cli -i payload.json -o result.json
+
+# Repeat create/read cycles
+cache-cli -j '{"list_1":["a"],"list_2":["b"]}' -r 3
+```
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--host` | | Base URL of the service (default `http://localhost:8000`) |
+| `--json` | `-j` | Inline JSON payload |
+| `--input` | `-i` | Input file path, or `-` for stdin |
+| `--output` | `-o` | Output file path, or `-` for stdout |
+| `--repeat` | `-r` | Number of create/read iterations (default `1`) |
+
+Exactly one of `--json` or `--input` is required.
+
+## Project structure
+
+```
+tailored_test_task/
+├── cli/                          # cache-cli client
+│   ├── client.py                 # HTTP client for /payload
+│   ├── main.py                   # CLI entry point
+│   └── settings.py               # CLI arguments / settings
+├── tailored_test_task/
+│   ├── __main__.py               # Startup script (uvicorn)
+│   ├── settings.py               # App configuration
+│   ├── db/
+│   │   ├── crud/                 # Data access for cached rows
+│   │   ├── models/               # SQLAlchemy models
+│   │   └── migrations/           # Alembic migrations
+│   ├── external_services/
+│   │   └── transformer.py        # String transformer (uppercase)
+│   └── web/
+│       ├── application.py        # FastAPI app factory
+│       ├── lifespan.py           # Startup / shutdown hooks
+│       └── api/
+│           ├── caching/          # Payload cache endpoints
+│           ├── echo/             # Sample echo router
+│           └── monitoring/       # Health check
+└── tests/
+    ├── cached/                   # Caching unit / integration tests
+    └── ...
 ```
 
 ## Configuration
 
-This application can be configured with environment variables.
+Configure the app with environment variables (or a `.env` file in the project root).
 
-You can create `.env` file in the root directory and place all
-environment variables here. 
+All app variables use the `TAILORED_TEST_TASK_` prefix. For example, `port` in `settings.py` maps to `TAILORED_TEST_TASK_PORT`.
 
-All environment variables should start with "TAILORED_TEST_TASK_" prefix.
+Copy [`.env.sample`](.env.sample) to `.env` and fill in the values:
 
-For example if you see in your "tailored_test_task/settings.py" a variable named like
-`random_parameter`, you should provide the "TAILORED_TEST_TASK_RANDOM_PARAMETER" 
-variable to configure the value. This behaviour can be changed by overriding `env_prefix` property
-in `tailored_test_task.settings.Settings.Config`.
-
-An example of .env file:
 ```bash
-TAILORED_TEST_TASK_RELOAD="True"
-TAILORED_TEST_TASK_PORT="8000"
-TAILORED_TEST_TASK_ENVIRONMENT="dev"
+cp .env.sample .env
 ```
 
-You can read more about BaseSettings class here: https://pydantic-docs.helpmanual.io/usage/settings/
+See [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/) for more on `BaseSettings`.
 
 ## Pre-commit
 
-To install pre-commit simply run inside the shell:
 ```bash
 pre-commit install
 ```
 
-pre-commit is very useful to check your code before publishing it.
-It's configured using .pre-commit-config.yaml file.
+Configured via `.pre-commit-config.yaml`. By default it runs:
 
-By default it runs:
-* mypy (validates types);
-* ruff (spots possible bugs);
+- **mypy** — type checking
+- **ruff** — linting
 
-
-You can read more about pre-commit here: https://pre-commit.com/
+More info: https://pre-commit.com/
 
 ## Migrations
 
-If you want to migrate your database, you should run following commands:
 ```bash
-# To run all migrations until the migration with revision_id.
-alembic upgrade "<revision_id>"
+# Apply all pending migrations
+alembic upgrade head
 
-# To perform all pending migrations.
-alembic upgrade "head"
+# Upgrade up to a specific revision
+alembic upgrade "<revision_id>"
 ```
 
 ### Reverting migrations
 
-If you want to revert migrations, you should run:
 ```bash
-# revert all migrations up to: revision_id.
+# Downgrade to a revision
 alembic downgrade <revision_id>
 
-# Revert everything.
- alembic downgrade base
+# Revert everything
+alembic downgrade base
 ```
 
-### Migration generation
+### Generating migrations
 
-To generate migrations you should run:
 ```bash
-# For automatic change detection.
-alembic revision --autogenerate
+# Autodetect model changes
+alembic revision --autogenerate -m "description"
 
-# For empty file generation.
-alembic revision
+# Empty migration file
+alembic revision -m "description"
 ```
-
 
 ## Running tests
 
-If you want to run it in docker, simply run:
+With Docker:
 
 ```bash
 docker compose run --build --rm api pytest -vv .
 docker compose down
 ```
 
-For running tests on your local machine.
-Simply run 
+Locally (with a test database available):
 
 ```bash
 pytest -vv .
 ```
-
